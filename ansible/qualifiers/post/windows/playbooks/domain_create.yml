@@ -1,0 +1,27 @@
+- name: Create a Windows Domain Controller
+  hosts: windows_dc
+  gather_facts: no
+  
+  tasks:
+
+    - name: set ntp servers
+      win_shell: 'w32tm /config /syncfromflags:manual /manualpeerlist:"{{ntp_servers}}"'
+      
+    - name: set the hostname
+      win_hostname:
+        name: "{{ hostname }}"
+      register: res_win_hostname
+    - name: hostname_reboot
+      when: res_win_hostname.reboot_required
+      win_reboot:
+      
+    - name: create the new forest
+      win_domain:
+         dns_domain_name: "{{ fqdn }}"
+         safe_mode_password: "{{ ansible_password }}"
+      register: res_win_domain
+
+    - name: win_domain reboot
+      when: res_win_domain.reboot_required
+      win_reboot:
+        test_command: 'exit (Get-Service -Name DNS).Status -ne "Running"'

@@ -1,0 +1,4 @@
+---
+- name: Red team stuff
+  ansible.builtin.module:
+    secret: sauce 

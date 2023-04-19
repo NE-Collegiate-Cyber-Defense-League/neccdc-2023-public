@@ -1,0 +1,17 @@
+{
+  "name": "manager-DNS",
+  "type": "dns",
+  "score_weight": 1,
+  "definition": {
+    "Server": "{{.Server}}",
+    "Port": "53",
+    "Fqdn": "manager.prometheus.corp",
+    "ExpectedIP": "{{.Expected_IP}}"
+  },
+  "attributes": {
+    "admin": {
+      "Server": "10.{{.TeamNumber}}.2.4",
+      "Expected_IP": "10.{{.TeamNumber}}.0.4"
+    }
+  }
+}

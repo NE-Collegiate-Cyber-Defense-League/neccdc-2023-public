@@ -1,0 +1,13 @@
+{
+  "name": "ICMP_manager",
+  "type": "icmp",
+  "score_weight": 1,
+  "definition": {
+    "host": "{{.Host}}"
+  },
+  "attributes": {
+    "admin": {
+      "Host": "10.{{.TeamNumber}}.0.4"
+    }
+  }
+}

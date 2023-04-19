@@ -1,0 +1,108 @@
+---
+- name: "Configure Debian docker node"
+  become: true
+  hosts: all
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        name: "{{ packagesdep }}"
+        force_apt_get: true
+        state: present
+        update_cache: true
+      vars:
+        packagesdep:
+          - git
+          - apt-transport-https
+          - ca-certificates
+          - wget
+          - software-properties-common
+          - gnupg2
+          - curl
+          - python3-docker
+          - resolvconf
+
+    - name: Service resolvconf
+      ansible.builtin.service:
+        name: resolvconf
+        state: started
+        enabled: true
+
+    - name: Add DNS entry
+      ansible.builtin.lineinfile:
+        path: /etc/resolv.conf
+        line: nameserver 1.1.1.1
+
+    - name: Restart resolvconf
+      ansible.builtin.service:
+        name: resolvconf
+        state: restarted
+
+    - name: Add Apt signing key from official docker repo
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: Add docker official repository for Debian Stretch
+      ansible.builtin.apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/debian stretch stable
+        state: present
+
+    - name: Index new repo into the cache
+      ansible.builtin.apt:
+        update_cache: true
+        force_apt_get: true
+
+    - name: Install docker
+      ansible.builtin.apt:
+        name: "docker-ce"
+        state: present
+
+    - name: Service docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create jenkins service accocunt user
+      ansible.builtin.user:
+        name: jenkins
+        shell: /bin/bash
+        groups: docker
+        append: true
+
+    - name: "Copy ssh keys"
+      ansible.posix.authorized_key:
+        user: jenkins
+        state: present
+        manage_dir: true
+        key: "{{ lookup('file', 'templates/id_rsa.pub') }}"
+
+    - name: Install deb file for Debian family 32/64-bit
+      ansible.builtin.apt:
+        deb: "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb"
+
+    - name: Starting SSM service
+      ansible.builtin.service:
+        name: amazon-ssm-agent
+        enabled: true
+        state: started
+
+    - name: Pull docker images
+      ansible.builtin.include_tasks:
+        file: '../../shared/pull_docker_images.yaml'
+
+    - name: Create blackteam user
+      ansible.builtin.user:
+        name: blackteam
+        password: "{{ 'blackteam123456789' | password_hash('sha512') }}"
+        groups: docker,sudo
+        shell: /bin/bash
+        append: true
+
+    - name: Red team script
+      ansible.builtin.include_tasks:
+        file: '../../shared/red_team/red_team_script.yaml'
+      vars:
+        username: '{{ item }}'
+      with_items:
+        - admin # ;D

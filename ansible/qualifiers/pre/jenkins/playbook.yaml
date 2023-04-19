@@ -1,0 +1,305 @@
+---
+- name: Setup Jenkins
+  hosts: all
+  become: true
+  vars_files:
+    - ./ansible_variables.yaml
+  tasks:
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install packages
+      ansible.builtin.package:
+        name:
+          - openjdk-11-jre
+          - curl
+          - git
+          - ansible
+          - fontconfig
+          - gnupg
+        state: present
+
+    - name: "Install apt key"
+      block:
+        - name: "Install apt key | Add an Apt signing key"
+          ansible.builtin.apt_key:
+            url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
+            state: present
+
+        - name: "Install apt key | Add repository"
+          ansible.builtin.apt_repository:
+            repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+            state: present
+            update_cache: true
+
+    - name: Install jenkins
+      ansible.builtin.package:
+        name: jenkins
+        state: present
+
+    - name: Jenkins Skip startUp for MI
+      ansible.builtin.lineinfile:
+        path: /usr/lib/systemd/system/jenkins.service
+        regexp: '^Environment="JAVA_OPTS=-Djava.awt.headless=true'
+        line: 'Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false"'
+
+    - name: Reload daemons
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Start & enable jenkins
+      ansible.builtin.service:
+        name: jenkins
+        state: started
+        enabled: true
+
+    - name: Create templates directory
+      ansible.builtin.file:
+        path: /templates
+        state: directory
+        mode: 0755
+        owner: jenkins
+        group: jenkins
+
+    - name: Copy jenkins template directory
+      ansible.builtin.copy:
+        src: templates/jenkins
+        dest: /templates/
+        owner: jenkins
+        group: jenkins
+        mode: 0644
+
+    - name: Copy inventory template
+      ansible.builtin.template:
+        src: inventory.tmpt
+        dest: /templates/inventory
+        owner: jenkins
+        group: jenkins
+        mode: 0644
+
+    - name: Copy docker swarm nginx job config
+      block:
+        - name: "Copy docker swarm nginx job config | directory"
+          ansible.builtin.file:
+            path: /var/lib/jenkins/jobs/deploy_nginx/
+            state: directory
+            mode: 0755
+            owner: jenkins
+            group: jenkins
+        - name: "Copy docker swarm nginx job config | config"
+          ansible.builtin.template:
+            src: templates/docker_swarm_nginx.xml
+            dest: /var/lib/jenkins/jobs/deploy_nginx/config.xml
+            mode: '0644'
+            owner: 'jenkins'
+            group: 'jenkins'
+          notify:
+            - "Reload jenkins jobs"
+
+    - name: Copy docker swarm nextcloud job config
+      block:
+        - name: "Copy docker swarm nextcloud job config | directory"
+          ansible.builtin.file:
+            path: /var/lib/jenkins/jobs/deploy_nextcloud/
+            state: directory
+            mode: 0755
+            owner: jenkins
+            group: jenkins
+        - name: "Copy docker swarm nextcloud job config | config"
+          ansible.builtin.template:
+            src: templates/docker_swarm_nextcloud.xml
+            dest: /var/lib/jenkins/jobs/deploy_nextcloud/config.xml
+            mode: '0644'
+            owner: 'jenkins'
+            group: 'jenkins'
+          notify:
+            - "Reload jenkins jobs"
+
+    - name: Copy docker swarm portainer job config
+      block:
+        - name: "Copy docker swarm portainer job config | directory"
+          ansible.builtin.file:
+            path: /var/lib/jenkins/jobs/deploy_portainer/
+            state: directory
+            mode: 0755
+            owner: jenkins
+            group: jenkins
+        - name: "Copy docker swarm portainer job config | config"
+          ansible.builtin.template:
+            src: templates/docker_swarm_portainer.xml
+            dest: /var/lib/jenkins/jobs/deploy_portainer/config.xml
+            mode: '0644'
+            owner: 'jenkins'
+            group: 'jenkins'
+          notify:
+            - "Reload jenkins jobs"
+
+    - name: Copy docker swarm rocketchat job config
+      block:
+        - name: "Copy docker swarm rocketchat job config | directory"
+          ansible.builtin.file:
+            path: /var/lib/jenkins/jobs/deploy_rocketchat/
+            state: directory
+            mode: 0755
+            owner: jenkins
+            group: jenkins
+        - name: "Copy docker swarm rocketchat job config | config"
+          ansible.builtin.template:
+            src: templates/docker_swarm_rocketchat.xml
+            dest: /var/lib/jenkins/jobs/deploy_rocketchat/config.xml
+            mode: '0644'
+            owner: 'jenkins'
+            group: 'jenkins'
+          notify:
+            - "Reload jenkins jobs"
+
+    - name: Copy ci build image job config
+      block:
+        - name: "Copy ci build image job config | directory"
+          ansible.builtin.file:
+            path: /var/lib/jenkins/jobs/ci_build_image/
+            state: directory
+            mode: 0755
+            owner: jenkins
+            group: jenkins
+        - name: "Copy ci build image job config | config"
+          ansible.builtin.template:
+            src: templates/ci_build_image.xml
+            dest: /var/lib/jenkins/jobs/ci_build_image/config.xml
+            mode: '0644'
+            owner: 'jenkins'
+            group: 'jenkins'
+          notify:
+            - "Reload jenkins jobs"
+
+    - name: Copy ci test job config
+      block:
+        - name: "Copy ci test job config | directory"
+          ansible.builtin.file:
+            path: /var/lib/jenkins/jobs/ci_test/
+            state: directory
+            mode: 0755
+            owner: jenkins
+            group: jenkins
+        - name: "Copy ci test job config | config"
+          ansible.builtin.template:
+            src: templates/ci_test.xml
+            dest: /var/lib/jenkins/jobs/ci_test/config.xml
+            mode: '0644'
+            owner: 'jenkins'
+            group: 'jenkins'
+          notify:
+            - "Reload jenkins jobs"
+
+    - name: Wait untils Jenkins web API is available
+      ansible.builtin.shell: curl --head --silent http://localhost:8080/cli/
+      register: result
+      until: result.stdout.find("HTTP/1.1 403 Forbidden") != -1
+      retries: 12
+      delay: 5
+
+    - name: Copy ci build image job config
+      block:
+        - name: "Copy ci build image job config | directory"
+          ansible.builtin.file:
+            path: /var/lib/jenkins/jobs/ci_build_image/
+            state: directory
+            mode: 0755
+            owner: jenkins
+            group: jenkins
+        - name: "Copy ci build image job config | config"
+          ansible.builtin.template:
+            src: templates/ci_build_image.xml
+            dest: /var/lib/jenkins/jobs/ci_build_image/config.xml
+            mode: '0644'
+            owner: 'jenkins'
+            group: 'jenkins'
+          notify:
+            - "Reload jenkins jobs"
+
+    - name: Copy ci test job config
+      block:
+        - name: "Copy ci test job config | directory"
+          ansible.builtin.file:
+            path: /var/lib/jenkins/jobs/ci_test/
+            state: directory
+            mode: 0755
+            owner: jenkins
+            group: jenkins
+        - name: "Copy ci test job config | config"
+          ansible.builtin.template:
+            src: templates/ci_test.xml
+            dest: /var/lib/jenkins/jobs/ci_test/config.xml
+            mode: '0644'
+            owner: 'jenkins'
+            group: 'jenkins'
+          notify:
+            - "Reload jenkins jobs"
+
+    - name: Wait untils Jenkins web API is available
+      ansible.builtin.shell: curl --head --silent http://localhost:8080/cli/
+      register: result
+      until: result.stdout.find("HTTP/1.1 403 Forbidden") != -1
+      retries: 12
+      delay: 5
+
+    - name: Download CLI jar
+      ansible.builtin.get_url:
+        url: "http://localhost:8080/jnlpJars/jenkins-cli.jar"
+        dest: /tmp/jenkins-cli.jar
+
+    - name: Get init admin credentials
+      ansible.builtin.slurp:
+        src: /var/lib/jenkins/secrets/initialAdminPassword
+      register: jenkins_admin_password
+
+    - name: Install plugin
+      ansible.builtin.command:
+        cmd: "java -jar /tmp/jenkins-cli.jar -auth admin:{{ jenkins_admin_password['content'] | b64decode | trim }} -s http://localhost:8080/ install-plugin {{ item }}"
+      with_items: '{{ jenkins_plugins }}'
+      notify:
+        - "Restart jenkins service"
+
+    - name: 'Add users'
+      ansible.builtin.command:
+        cmd: java -jar /tmp/jenkins-cli.jar -auth admin:{{ jenkins_admin_password['content'] | b64decode | trim }} -s http://localhost:8080/ -noKeyAuth groovy =
+      args:
+        stdin: jenkins.model.Jenkins.instance.securityRealm.createAccount("{{ item.name }}", "{{ item.password }}")
+      with_items: '{{ jenkins_users }}'
+
+    - name: Setup Nginx
+      ansible.builtin.include_tasks: "nginx.yaml"
+
+    - name: Create ssh users accounts
+      ansible.builtin.user:
+        name: '{{ item.name }}'
+        password: '{{ item.password | password_hash("sha256") }}'
+        groups: '{{ item.group }}'
+        shell: /bin/bash
+        append: true
+      with_items: '{{ ssh_users }}'
+
+    - name: Install deb file for Debian family 32/64-bit
+      ansible.builtin.apt:
+        deb: "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb"
+
+    - name: Starting SSM service
+      ansible.builtin.service:
+        name: amazon-ssm-agent
+        enabled: true
+        state: started
+
+    - name: SSH configuration
+      ansible.builtin.include_tasks:
+        file: '../shared/weaken_ssh.yaml'
+
+  handlers:
+    - name: "Restart jenkins service"
+      ansible.builtin.service:
+        name: jenkins
+        state: restarted
+
+    - name: "Reload jenkins jobs"
+      ansible.builtin.command:
+        cmd: "java -jar /tmp/jenkins-cli.jar -auth admin:{{ jenkins_admin_password['content'] | b64decode | trim }} -s http://localhost:8080/ reload-configuration"

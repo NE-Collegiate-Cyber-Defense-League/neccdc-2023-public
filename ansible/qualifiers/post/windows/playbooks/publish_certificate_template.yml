@@ -1,0 +1,53 @@
+- name: Import and Publish Web Server Certificate Template
+  hosts: windows_ca
+  become: true
+  become_method: runas
+  become_user: PROMETHEUS\administrator
+  vars:
+    ansible_become_password: Y$-;FUrEYxtw%ZlhJD8mXS3vYq$yJh4K
+
+  tasks:
+
+    - name: Install NuGet
+      ansible.windows.win_shell: 'Install-PackageProvider -Name NuGet -Force'
+
+    - name: Install ADCSTemplate
+      ansible.windows.win_shell: 'Install-Module -Name ADCSTemplate -SkipPublisherCheck -Force'
+      register: temp
+    - debug: var=temp.stdout
+
+    - name: Add Feature RSAT-AD-PowerShell
+      ansible.windows.win_feature:
+        name: RSAT-AD-PowerShell
+        state: present
+      register: rsat
+    - debug: var=rsat.exitcode
+  
+    - name: Copy Certificate Template to ProgramData Folder
+      ansible.windows.win_copy:
+        src: ../files/PrometheusWebServer.json
+        dest: C:\ProgramData
+
+    - name: Publish Certificate Template
+      ansible.windows.win_powershell:
+        script: |
+          [CmdletBinding()]
+          param (
+            [String]
+            $DisplayName,
+
+            [String]
+            $TemplatePath
+          )
+
+          New-ADCSTemplate -DisplayName $DisplayName -JSON (Get-Content $TemplatePath -Raw) -Publish
+        parameters:
+          DisplayName: Prometheus Web Server
+          TemplatePath: C:\ProgramData\PrometheusWebServer.json
+      register: import_template
+    - debug: var=import_template.output
+
+    - name: Remove WebServer Json
+      ansible.windows.win_file:
+        path: C:\ProgramData\PrometheusWebServer.json
+        state: absent

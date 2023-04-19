@@ -1,0 +1,7 @@
+users:
+- name: 'admin'
+  password: 'igoaingr9anrg0rn'
+  group: ''
+- name: 'zcool'
+  password: 'A3daD44InF!u'
+  group: 'sudo'

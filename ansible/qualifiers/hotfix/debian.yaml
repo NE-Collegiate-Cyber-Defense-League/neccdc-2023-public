@@ -1,0 +1,13 @@
+- name: Configure Debian DNS
+  hosts: debian
+  become: true
+  tasks:
+    - name: Remove resolvconf
+      ansible.builtin.apt:
+        pkg: resolvconf
+        state: absent
+    - name: Add DNS entry
+      ansible.builtin.copy:
+        dest: "/etc/resolv.conf"
+        content: |
+          nameserver 10.{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'].split('.')[1] }}.2.4

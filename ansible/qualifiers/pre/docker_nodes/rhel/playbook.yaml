@@ -1,0 +1,86 @@
+---
+- name: "Configure RHEL docker node"
+  hosts: all
+  become: true
+  tasks:
+    - name: Update yum packages
+      ansible.builtin.yum:
+        update_cache: true
+
+    - name: Add signing key
+      ansible.builtin.rpm_key:
+        key: "https://download.docker.com/linux/centos/gpg"
+        state: present
+
+    - name: Add repository into repo.d list
+      ansible.builtin.yum_repository:
+        name: docker
+        description: docker repository
+        baseurl: "https://download.docker.com/linux/centos/$releasever/$basearch/stable"
+        enabled: true
+        gpgcheck: true
+        gpgkey: "https://download.docker.com/linux/centos/gpg"
+
+    - name: Install docker
+      ansible.builtin.package:
+        name: "{{ packagesdep }}"
+        state: present
+      vars:
+        packagesdep:
+          - docker-ce
+          - python3
+          - python3-pip
+
+    - name: Install docker python package
+      ansible.builtin.pip:
+        name: docker
+
+    - name: Service docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create jenkins service accocunt user
+      ansible.builtin.user:
+        name: jenkins
+        shell: /bin/bash
+        groups: docker
+        append: true
+
+    - name: "Copy ssh keys"
+      ansible.posix.authorized_key:
+        user: jenkins
+        state: present
+        manage_dir: true
+        key: "{{ lookup('file', 'templates/id_rsa.pub') }}"
+
+    - name: Install the ssm agent
+      ansible.builtin.dnf:
+        name: 'https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm'
+        state: present
+        disable_gpg_check: true
+
+    - name: Starting SSM service
+      ansible.builtin.service:
+        name: amazon-ssm-agent
+        enabled: true
+        state: started
+
+    - name: Pull docker images
+      ansible.builtin.include_tasks:
+        file: '../../shared/pull_docker_images.yaml'
+
+    - name: "Ensure ssh_pwauth is true"
+      ansible.builtin.lineinfile:
+        path: /etc/cloud/cloud.cfg
+        regexp: "^#ssh_pwauth|^ssh_pwauth"
+        line: 'ssh_pwauth: true'
+
+    - name: Create blackteam user
+      ansible.builtin.user:
+        name: blackteam
+        password: "{{ 'blackteam123456789' | password_hash('sha512') }}"
+        groups: wheel
+        shell: /bin/bash
+        append: true

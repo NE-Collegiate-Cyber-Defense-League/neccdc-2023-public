@@ -1,0 +1,21 @@
+---
+- name: Update worker hostname
+  become: true
+  ansible.builtin.shell:
+    cmd: hostnamectl set-hostname "{{ inventory_hostname }}"
+
+- name: Restart Docker service
+  become: true
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+
+- name: Add Docker Swarm worker
+  become: true
+  vars:
+    token: "{{ lookup('file', '/tmp/worker_token') }}"
+  community.docker.docker_swarm:
+    state: join
+    advertise_addr: "{{ ansible_default_ipv4.interface }}"
+    join_token: "{{ token }}"
+    remote_addrs: [manager.prometheus.corp:2377]

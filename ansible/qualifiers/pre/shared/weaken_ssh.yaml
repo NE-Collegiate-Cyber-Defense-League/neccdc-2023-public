@@ -1,0 +1,35 @@
+---
+- name: "SSH MaxAuthTries is set to 100"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^(#)?MaxAuthTries \d'
+    line: "MaxAuthTries 100"
+
+- name: "Ensure SSH password auth is enabled"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#PasswordAuthentication|^PasswordAuthentication"
+    line: 'PasswordAuthentication yes'
+
+- name: "Ensure SSH root login is enabled"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#PermitRootLogin|^PermitRootLogin"
+    line: 'PermitRootLogin yes'
+
+- name: "Ensure SSH PermitEmptyPasswords is enabled"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#PermitEmptyPasswords|^PermitEmptyPasswords"
+    line: 'PermitEmptyPasswords yes'
+
+- name: "Ensure SSH AllowTcpForwarding is enabled"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#AllowTcpForwarding|^AllowTcpForwarding"
+    line: 'AllowTcpForwarding yes'
+
+- name: Restart sshd
+  ansible.builtin.service:
+    name: sshd
+    state: restarted

@@ -1,0 +1,119 @@
+---
+- name: Create AD Groups and Users
+  hosts: windows_dc
+  gather_facts: no
+
+  tasks:
+
+    - name: Change Security Requirements
+      ansible.windows.win_shell : 'Set-ADDefaultDomainPasswordPolicy -Identity prometheus.corp -ComplexityEnabled 0 -LockoutThreshold 100 -MinPasswordLength 0'
+
+    - name: Create Groups
+      win_domain_group:
+        name: "{{item}}"
+        scope: global
+      with_items:
+        - Engineering
+        - HR
+        - Sales
+        - Security
+        - Domain Join
+
+    - name: Copy Domain Join Script to DC
+      ansible.windows.win_copy:
+        src: ../files/grant_domain_join.bat
+        dest: C:\ProgramData
+    
+    - name: Run Domain Join Script
+      win_command:
+        cmd: C:\ProgramData\grant_domain_join.bat
+      
+    - name: Parse User Files
+      read_csv:
+        path: ../files/ad_users.csv
+      delegate_to: 127.0.0.1
+      register: accounts
+
+    - name: add accounts
+      win_domain_user:
+        name: "{{item.account}}"
+        firstname: "{{item.firstname}}"
+        surname: "{{item.surname}}"
+        password: "{{item.password}}"
+        groups: "{{item.group}}"
+        password_never_expires: yes
+        state: present
+      with_items: "{{accounts.list}}"
+
+    - name: Create Workstations OU
+      community.windows.win_domain_ou:
+        name: Workstations
+        path: "DC=prometheus,DC=corp"
+        state: present
+        protected: true
+
+    - name: Parse User Files
+      read_csv:
+        path: ../files/ad_computers.csv
+      delegate_to: 127.0.0.1
+      register: computers
+
+        #    - name: Add Dummy Computer Objects
+        #      ansible.windows.win_shell: 'New-ADComputer -Name "{{item.name}}" -SamAccountName "{{item.name}}" -Path "OU=Workstations,DC=prometheus,DC=corp"'
+        #      with_items: "{{computers.list}}"
+
+    - name: Copy ICMP GPO to machines
+      ansible.windows.win_copy:
+        src: ../files/51CD0872-C702-4372-93D9-26B3CE44DE64.zip
+        dest: C:\ProgramData
+        
+    - name: Extract GPO
+      community.windows.win_unzip:
+        src: C:\ProgramData\51CD0872-C702-4372-93D9-26B3CE44DE64.zip
+        dest: C:\ProgramData
+        delete_archive: yes
+
+    - name: set dns forwarder to the default gateway
+      win_shell: |
+        Add-DnsServerForwarder -IPAddress "{{ gateway }}" -PassThru
+    - name: Reverse Zone 10.X.0.0/24
+      ignore_errors: yes
+      win_shell: |
+        Add-DnsServerPrimaryZone -NetworkID "10.{{team}}.0.0/24" -ReplicationScope Domain
+      retries: 3
+      delay: 60
+    - name: Reverse Zone 10.X.1.0/24
+      ignore_errors: yes
+      win_shell: |
+        Add-DnsServerPrimaryZone -NetworkID "10.{{team}}.1.0/24" -ReplicationScope Domain
+      retries: 3
+      delay: 60
+    - name: Reverse Zone 10.X.2.0/24
+      ignore_errors: yes
+      win_shell: |
+        Add-DnsServerPrimaryZone -NetworkID "10.{{team}}.2.0/24" -ReplicationScope Domain
+      retries: 3
+      delay: 60
+
+    - name: A Records
+      win_shell: |
+        Add-DnsServerResourceRecordA -Name "manager" -IPv4Address "10.{{team}}.0.4" -ZoneName "{{fqdn}}" -CreatePTR
+        Add-DnsServerResourceRecordA -Name "artemis-nextcloud" -IPv4Address "10.{{team}}.0.4" -ZoneName "{{fqdn}}"
+        Add-DnsServerResourceRecordA -Name "artemis-rocketchat" -IPv4Address "10.{{team}}.0.4" -ZoneName "{{fqdn}}"
+        Add-DnsServerResourceRecordA -Name "worker01" -IPv4Address "10.{{team}}.0.5" -ZoneName "{{fqdn}}" -CreatePTR
+        Add-DnsServerResourceRecordA -Name "worker02" -IPv4Address "10.{{team}}.0.6" -ZoneName "{{fqdn}}" -CreatePTR
+        Add-DnsServerResourceRecordA -Name "worker03" -IPv4Address "10.{{team}}.0.7" -ZoneName "{{fqdn}}" -CreatePTR
+        Add-DnsServerResourceRecordA -Name "windows-dc" -IPv4Address "10.{{team}}.2.4" -ZoneName "{{fqdn}}" -CreatePTR
+        Add-DnsServerResourceRecordA -Name "windows-ca" -IPv4Address "10.{{team}}.2.5" -ZoneName "{{fqdn}}" -CreatePTR
+        Add-DnsServerResourceRecordA -Name "jenkins" -IPv4Address "10.{{team}}.2.6" -ZoneName "{{fqdn}}" -CreatePTR
+        Add-DnsServerResourceRecordA -Name "wazuh" -IPv4Address "10.{{team}}.2.7" -ZoneName "{{fqdn}}" -CreatePTR
+
+    - name: Remove Domain Join SCript
+      ansible.windows.win_file:
+        path: C:\ProgramData\grant_domain_join.bat
+        state: absent
+
+    - name: Remove GPO Folder
+      ansible.windows.win_file:
+        path: C:\ProgramData\51CD0872-C702-4372-93D9-26B3CE44DE64
+        state: absent

@@ -1,0 +1,42 @@
+---
+- name: Configure Wallpapers and GPO
+  hosts: windows_dc
+  gather_facts: no
+
+  tasks:
+
+    - name: Copy BGInfo to machines
+      ansible.windows.win_copy:
+        src: ../files/BGInfo.zip
+        dest: C:\Windows\SYSVOL\domain\scripts
+
+    - name: Copy GPO to machines
+      ansible.windows.win_copy:
+        src: ../files/069B9C63-1B7A-458B-8DB3-3633EC8A04BB.zip
+        dest: C:\ProgramData
+    
+    - name: Extract BGInfo
+      community.windows.win_unzip:
+        src: C:\Windows\SYSVOL\domain\scripts\BGInfo.zip
+        dest: C:\Windows\SYSVOL\domain\scripts
+        delete_archive: yes
+
+    - name: Extract GPO
+      community.windows.win_unzip:
+        src: C:\ProgramData\069B9C63-1B7A-458B-8DB3-3633EC8A04BB.zip
+        dest: C:\ProgramData
+        delete_archive: yes
+
+    - name: Import GPO
+      ansible.windows.win_shell: 'Import-GPO -BackupId 069B9C63-1B7A-458B-8DB3-3633EC8A04BB -TargetName "Logon Script - BGInfo" -path C:\ProgramData -CreateIfNeeded'
+
+    - name: Link GPO
+      ansible.windows.win_shell: 'New-GPLink -Name "Logon Script - BGInfo" -Target "OU=Domain Controllers,DC=prometheus,DC=corp" -LinkEnabled Yes'
+
+    - name: Link GPO
+      ansible.windows.win_shell: 'New-GPLink -Name "Logon Script - BGInfo" -Target "DC=prometheus,DC=corp" -LinkEnabled Yes'
+
+    - name: Remove GPO Folder
+      ansible.windows.win_file:
+        path: C:\ProgramData\069B9C63-1B7A-458B-8DB3-3633EC8A04BB
+        state: absent

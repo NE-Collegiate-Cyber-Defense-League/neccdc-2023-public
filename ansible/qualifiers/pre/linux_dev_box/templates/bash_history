@@ -1,0 +1,19 @@
+passwd
+ls -lart
+pwd
+id
+ps -aux
+cat /etc/passwd
+ls /home
+nmap 10.0.2.0/24 -p 21,22,23,80,443
+exit
+touch rockyou.txt
+vim rockyou.txt
+ls
+vim cracked.txt
+ls
+hashcat -m 0 -a 0 -o cracked.txt target_hashes.txt rockyou.txt
+ls
+rm rockyou.txt
+rm cracked.txt 
+exit

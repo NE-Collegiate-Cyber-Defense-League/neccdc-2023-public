@@ -1,0 +1,21 @@
+{
+  "name": "WinRM",
+  "type": "winrm",
+  "score_weight": 1,
+  "definition": {
+    "Host": "{{.Host}}",
+    "Port": "5985",
+    "Username": "{{.Username}}",
+    "Password": "{{.Password}}",
+    "Cmd": "whoami",
+    "Encrypted": "false",
+    "MatchContent": "false"
+  },
+  "attributes": {
+    "admin": {
+      "Host": "10.{{.TeamNumber}}.2.4",
+      "Username": "BlackTeam",
+      "Password": "YFUrEYxtw%ZlhJD8mXS3vYq$yJh4K"
+    }
+  }
+}

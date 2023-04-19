@@ -1,0 +1,22 @@
+{
+  "name": "docker-manager",
+  "type": "ssh",
+  "score_weight": 1,
+  "definition": {
+    "Host": "{{.Host}}",
+    "Port": "22",
+    "Username": "{{.Username}}",
+    "Password": "{{.Password}}",
+    "Cmd": "sudo docker node ls | grep Leader | tr -s ' ' | cut -d' ' -f5",
+    "MatchContent": "Active"
+  },
+  "attributes": {
+    "admin": {
+      "Host": "10.{{.TeamNumber}}.0.4",
+      "Username": "blackteam"
+    },
+    "user": {
+      "Password": "blackteam"
+    }
+  }
+}

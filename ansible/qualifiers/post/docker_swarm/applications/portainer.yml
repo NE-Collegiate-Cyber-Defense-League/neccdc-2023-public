@@ -1,0 +1,21 @@
+---
+- name: Set up Portainer on Swarm Manager
+  hosts: manager
+  tasks:
+  - name: Create a portainer volume
+    become: true
+    community.docker.docker_volume:
+      name: portainer_data
+
+  - name: Deploy portainer container
+    become: true
+    community.docker.docker_container:
+      image: portainer/portainer-ce:latest
+      name: portainer
+      hostname: portainer
+      ports:
+      - "9443:9443"
+      volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+      restart_policy: always

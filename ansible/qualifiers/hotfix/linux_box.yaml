@@ -1,0 +1,16 @@
+---
+- name: Linux dev box hotfix
+  hosts: linux_dev1
+  become: true
+  vars_files:
+    - ./ansible_variables.yaml
+  tasks:
+    - name: Create users accocunts
+      ansible.builtin.user:
+        name: '{{ item.name }}'
+        create_home: false
+        password: '{{ item.password | password_hash("sha256") }}'
+        groups: '{{ item.group }}'
+        shell: /bin/bash
+        append: true
+      with_items: '{{ users }}'

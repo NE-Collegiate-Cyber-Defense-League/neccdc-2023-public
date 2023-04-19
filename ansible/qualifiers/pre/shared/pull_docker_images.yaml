@@ -1,0 +1,36 @@
+---
+- name: Pull nextcloud image
+  community.docker.docker_image:
+    source: pull
+    name: nextcloud
+    tag: 25.0.3
+
+- name: Pull rocket chat image
+  community.docker.docker_image:
+    source: pull
+    name: rocket.chat
+    tag: 5.4.0
+
+- name: Pull nginx image
+  community.docker.docker_image:
+    source: pull
+    name: nginx
+    tag: 1.23.3
+
+- name: Pull mongo image
+  community.docker.docker_image:
+    source: pull
+    name: mongo
+    tag: 6.0.3
+
+- name: Pull mariadb image
+  community.docker.docker_image:
+    source: pull
+    name: mariadb
+    tag: 10.9.4
+
+- name: Pull portainer image
+  community.docker.docker_image:
+    source: pull
+    name: portainer/portainer-ce
+    tag: 2.16.2

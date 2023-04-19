@@ -1,0 +1,21 @@
+server {
+    listen          80;
+    listen          [::]:80;
+
+    server_name     {{ client_name }}-nextcloud.{{ domain_name }};
+
+    location / {
+        proxy_pass http://{{ client_name }}-nextcloud/;
+    }
+}
+
+server {
+    listen          80;
+    listen          [::]:80;
+
+    server_name     {{ client_name }}-rocketchat.{{ domain_name }};
+
+    location / {
+        proxy_pass http://{{ client_name }}-rocketchat/;
+    }
+}

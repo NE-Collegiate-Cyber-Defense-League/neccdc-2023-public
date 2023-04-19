@@ -1,0 +1,37 @@
+windows:
+  children:
+    windows_servers:
+      children:
+        windows_dc:
+          hosts:
+            10.0.2.4: {team: 0, gateway: 10.0.2.1}
+          vars:
+            hostname: dc01
+            ntp_servers: "0.us.pool.ntp.org,1.us.pool.ntp.org"
+
+        windows_ca:
+          hosts:
+            10.0.2.5: {team: 0, name_server: 10.0.2.4}
+          vars:
+            hostname: ca01
+      vars:
+        ansible_password: Y$-;FUrEYxtw%ZlhJD8mXS3vYq$yJh4K
+
+    windows_client:
+      hosts:
+        10.0.2.9: {team: 0, name_server: 10.0.2.4}
+      vars:
+        hostname: win01
+        ansible_password: 52cNEDTM%mtlsVK@m2D%Jk(oa)97Qnj4
+
+    domain_machines:
+      children:
+        windows_ca:
+        windows_client:
+
+  vars:
+    ansible_connection: winrm
+    ansible_port: 5985
+    ansible_winrm_transport: ntlm
+    ansible_user: Administrator
+    fqdn: prometheus.corp

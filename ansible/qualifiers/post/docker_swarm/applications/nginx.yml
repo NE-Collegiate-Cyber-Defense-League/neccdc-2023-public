@@ -1,0 +1,42 @@
+---
+- name: Set up Nginx proxy
+  hosts: manager
+  become: true
+  tasks:
+  - name: Label nodes for nginx deployment
+    community.docker.docker_node:
+      hostname: "{{ item }}"
+      labels:
+        proxy: allowed
+    loop: "{{ groups['nginx'] }}"
+
+  - name: Transfer the nginx config file
+    ansible.builtin.template:
+      src: templates/nginx.conf.j2
+      dest: "/tmp/{{ client_name }}.nginx.conf"
+      mode: 0644
+
+  - name: Setup nginx config file in swarm
+    community.docker.docker_config:
+      name: "{{ client_name }}.nginx.conf"
+      data_src: "/tmp/{{ client_name }}.nginx.conf"
+      state: present
+
+  - name: Deploy nginx service
+    community.docker.docker_swarm_service:
+      image: nginx:1.23.3
+      name: nginx-proxy
+      hostname: proxy
+      networks:
+      - name: saas_network
+      publish:
+      - protocol: tcp
+        published_port: 80
+        target_port: 80
+      configs:
+      - config_name: "{{ client_name }}.nginx.conf"
+        filename: "/etc/nginx/conf.d/{{ client_name }}.nginx.conf"
+      replicas: "{{ groups['nginx'] | length }}"
+      placement:
+        constraints:
+        - node.labels.proxy == allowed

@@ -1,0 +1,24 @@
+---
+- name: Update manager hostname
+  become: true
+  ansible.builtin.shell:
+    cmd: hostnamectl set-hostname "{{ inventory_hostname }}"
+
+- name: Restart the Docker service
+  become: true
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+
+- name: Initialize the Docker Swarm
+  become: true
+  community.docker.docker_swarm:
+    state: present
+    advertise_addr: "{{ ansible_default_ipv4.interface }}"
+  register: swarm_info
+
+- name: Save worker join token
+  vars:
+    token: "{{ swarm_info['swarm_facts']['JoinTokens']['Worker'] }}"
+  local_action:
+    copy content="{{ token }}" dest='/tmp/worker_token'

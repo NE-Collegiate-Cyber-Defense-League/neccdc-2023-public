@@ -1,0 +1,22 @@
+{
+  "name": "artemis-rocketchat.prometheus.corp",
+  "type": "ssh",
+  "score_weight": 1,
+  "definition": {
+    "Host": "{{.Host}}",
+    "Port": "22",
+    "Username": "{{.Username}}",
+    "Password": "{{.Password}}",
+    "Cmd": "curl -s artemis-rocketchat.prometheus.corp | grep Rocket",
+    "MatchContent": "Rocket"
+  },
+  "attributes": {
+    "admin": {
+      "Host": "10.{{.TeamNumber}}.0.4",
+      "Username": "blackteam"
+    },
+    "user": {
+      "Password": "blackteam"
+    }
+  }
+}

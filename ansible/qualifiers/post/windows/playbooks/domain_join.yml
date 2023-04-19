@@ -1,0 +1,29 @@
+---
+- name: Join a member system to Your Domain
+  hosts: domain_machines
+  gather_facts: no
+  vars:
+    domain_joiner_account: Prometheus\domainjoin
+    domain_joiner_password: 1qazxsW@1
+
+  tasks:
+
+    - name: Change the DNS Server to blue_dns
+      win_dns_client:
+        adapter_names: '*'
+        ipv4_addresses:
+        - "{{ name_server }}"
+    - name: Join the domain
+      win_domain_membership:
+        dns_domain_name: "{{ fqdn }}"
+        hostname: "{{ hostname }}"
+        domain_admin_user: "{{ domain_joiner_account }}"
+        domain_admin_password: "{{ domain_joiner_password }}"
+        state: domain
+      register: domain_state
+    
+    - name:  Reboot when Required
+      win_reboot:
+        msg: "Joining Domain.Rebooting..."
+        pre_reboot_delay: 1
+      when: domain_state.reboot_required

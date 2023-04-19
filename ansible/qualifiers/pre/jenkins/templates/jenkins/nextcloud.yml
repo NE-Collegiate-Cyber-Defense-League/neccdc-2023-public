@@ -1,0 +1,71 @@
+---
+- name: Set up MariaDB service
+  hosts: manager
+  tasks:
+  - name: Label nodes for mariadb deployment
+    become: true
+    community.docker.docker_node:
+      hostname: "{{ item }}"
+      labels:
+        mariadb: allowed
+    loop: "{{ groups['mariadb'] }}"
+
+  - name: Deploy mariadb database service
+    become: true
+    community.docker.docker_swarm_service:
+      image: bitnami/mariadb:10.9.4
+      name: "{{ client_name }}-db"
+      hostname: db
+      restart_config:
+        condition: none
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      networks:
+      - name: saas_network
+      mounts:
+      - source: "{{ client_name }}_mariadb_data"
+        target: /var/lib/mysql
+        type: volume
+      env:
+        MARIADB_ROOT_PASSWORD: "{{ db_password }}"
+        MARIADB_USER: nextcloud
+        MARIADB_PASSWORD: "{{ db_password }}"
+        MARIADB_DATABASE: nextcloud
+      placement:
+        constraints:
+        - node.labels.mariadb == allowed
+
+  - name: Label nodes for nextcloud deployment
+    become: true
+    community.docker.docker_node:
+      hostname: "{{ item }}"
+      labels:
+        nextcloud: allowed
+    loop: "{{ groups['nextcloud'] }}"
+
+  - name: Deploy nextcloud service
+    become: true
+    community.docker.docker_swarm_service:
+      image: nextcloud:25.0.3
+      name: "{{ client_name }}-nextcloud"
+      hostname: nextcloud
+      restart_config:
+        condition: none
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      networks:
+      - name: saas_network
+      mounts:
+      - source: "{{ client_name }}_nextcloud_data"
+        target: /var/www/html
+        type: volume
+      env:
+        MYSQL_HOST: "{{ client_name }}-db"
+        MYSQL_USER: nextcloud
+        MYSQL_PASSWORD: "{{ db_password }}"
+        MYSQL_DATABASE: nextcloud
+      placement:
+        constraints:
+        - node.labels.nextcloud == allowed

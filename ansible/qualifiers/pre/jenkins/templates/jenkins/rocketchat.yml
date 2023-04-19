@@ -1,0 +1,64 @@
+---
+- name: Set up MongoDB service
+  hosts: manager
+  become: true
+  tasks:
+  - name: Label nodes for mongodb deployment
+    become: true
+    community.docker.docker_node:
+      hostname: "{{ item }}"
+      labels:
+        mongodb: allowed
+    loop: "{{ groups['mongodb'] }}"
+
+  - name: Deploy mongodb database service
+    become: true
+    community.docker.docker_swarm_service:
+      image: bitnami/mongodb:6.0.3
+      name: "{{ client_name }}-mongodb"
+      hostname: db
+      networks:
+      - name: saas_network
+      mounts:
+      - source: "{{ client_name }}_mongodb_data"
+        target: /bitnami/mongodb
+        type: volume
+      env:
+        MONGODB_ADVERTISED_HOSTNAME: "{{ client_name}}-mongodb"
+        MONGODB_REPLICA_SET_MODE: primary
+        MONGODB_USERNAME: rocketchat
+        MONGODB_PASSWORD: "{{ db_password }}"
+        MONGODB_ROOT_PASSWORD: "{{ db_password }}"
+        MONGODB_DATABASE: rocketchat
+        MONGODB_REPLICA_SET_KEY: "{{ db_password }}"
+      placement:
+        constraints:
+        - node.labels.mongodb == allowed
+
+  - name: Label nodes for rocketchat deployment
+    become: true
+    community.docker.docker_node:
+      hostname: "{{ item }}"
+      labels:
+        rocketchat: allowed
+    loop: "{{ groups['rocketchat'] }}"
+
+  - name: Deploy rocketchat service
+    become: true
+    community.docker.docker_swarm_service:
+      image: rocket.chat:5.4.0
+      name: "{{ client_name }}-rocketchat"
+      hostname: rocketchat
+      networks:
+      - name: saas_network
+      mounts:
+      - source: "{{ client_name }}_rocketchat_data"
+        target: /app/upload
+        type: volume
+      env:
+        PORT: "80"
+        MONGO_URL: "mongodb://rocketchat:{{ db_password }}@{{ client_name }}-mongodb/rocketchat?authSource=rocketchat"
+        MONGO_OPLOG_URL: "mongodb://rocketchat:{{ db_password }}@{{ client_name }}-mongodb/local?authSource=rocketchat"
+      placement:
+        constraints:
+        - node.labels.rocketchat == allowed

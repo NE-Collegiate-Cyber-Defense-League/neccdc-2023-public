@@ -1,0 +1,21 @@
+---
+- hosts: all
+  tasks:
+  
+- name: Run domain_create playbook
+  import_playbook: playbooks/domain_create.yml
+
+- name: Run domain_populate playbook
+  import_playbook: playbooks/domain_populate.yml
+
+- name: Run domain_join playbook
+  import_playbook: playbooks/domain_join.yml
+
+- name: Run deploy_ca playbook
+  import_playbook: playbooks/deploy_ca.yml
+
+- name: Run publish_certificate_template playbook
+  import_playbook: playbooks/publish_certificate_template.yml
+
+- name: Run configure_bg playbook
+  import_playbook: playbooks/configure_bg.yml

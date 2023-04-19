@@ -1,0 +1,7 @@
+---
+- name: Create single SaaS network
+  become: true
+  community.docker.docker_network:
+    name: saas_network
+    attachable: true
+    driver: overlay

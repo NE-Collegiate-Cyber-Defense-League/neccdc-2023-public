@@ -1,0 +1,61 @@
+---
+- name: Linux dev box
+  hosts: all
+  become: true
+  vars_files:
+    - ./ansible_variables.yaml
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        update_cache: true
+        state: present
+        pkg:
+          - curl
+          - git
+          - nmap
+          - hashcat
+          - tmux
+          - realmd
+
+    - name: Create users accocunts
+      ansible.builtin.user:
+        name: '{{ item.name }}'
+        password: '{{ item.password | password_hash("sha256") }}'
+        groups: '{{ item.group }}'
+        shell: /bin/bash
+        append: true
+      with_items: '{{ users }}'
+
+    - name: Git checkout
+      ansible.builtin.git:
+        repo: 'https://github.com/NE-Collegiate-Cyber-Defense-League/blue-team-resources.git'
+        dest: /home/ubuntu/resources
+
+    - name: Copy bash_history to admin user home
+      ansible.builtin.template:
+        src: templates/bash_history
+        dest: /home/admin/.bash_history
+        mode: '0600'
+        owner: 'admin'
+        group: 'admin'
+
+    - name: Copy hash to admin user
+      ansible.builtin.template:
+        src: templates/target_hashes.txt
+        dest: /home/admin/target_hashes.txt
+        mode: '0660'
+        owner: 'admin'
+        group: 'admin'
+
+    - name: SSH configuration
+      ansible.builtin.include_tasks:
+        file: '../shared/weaken_ssh.yaml'
+
+    - name: Red team script
+      ansible.builtin.include_tasks:
+        file: '../shared/red_team/red_team_script.yaml'
+      vars:
+        username: '{{ item }}'
+      with_items:
+        - admin
+        - zcool

@@ -1,0 +1,66 @@
+---
+- name: Configure RHEL DNS
+  hosts: rhel
+  become: true
+  tasks:
+    - name: Add DNS entry
+      community.general.nmcli:
+        conn_name: eth0
+        type: ethernet
+        dns4:
+          - "10.{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'].split('.')[1] }}.2.4"
+        state: present
+    - name: Restart NetworkManager
+      ansible.builtin.service:
+        name: NetworkManager
+        state: restarted
+
+- name: Configure Debian DNS
+  hosts: debian
+  become: true
+  tasks:
+    - name: Remove resolvconf
+      ansible.builtin.apt:
+        pkg: resolvconf
+        state: absent
+    - name: Add DNS entry
+      ansible.builtin.copy:
+        dest: "/etc/resolv.conf"
+        content: |
+          nameserver 10.{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'].split('.')[1] }}.2.4
+
+- name: Initialize Docker Swarm
+  hosts: manager
+  roles:
+    - docker_swarm_init
+
+- name: Add Docker Swarm workers
+  hosts: workers
+  roles:
+    - docker_swarm_add_worker
+
+- name: Set up Docker Swarm network
+  hosts: manager
+  roles:
+    - docker_swarm_network
+
+- name: Nextcloud
+  ansible.builtin.import_playbook: 'applications/nextcloud.yml'
+  vars:
+    client_name: artemis
+    db_password: test123
+
+- name: Nginx
+  ansible.builtin.import_playbook: 'applications/nginx.yml'
+  vars:
+    client_name: artemis
+    domain_name: prometheus.corp
+
+- name: Portainer
+  ansible.builtin.import_playbook: 'applications/portainer.yml'
+
+- name: Rockerchat
+  ansible.builtin.import_playbook: 'applications/rocketchat.yml'
+  vars:
+    client_name: artemis
+    db_password: test123

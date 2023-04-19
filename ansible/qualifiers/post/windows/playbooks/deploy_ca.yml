@@ -1,0 +1,55 @@
+- name: Deploy and configure Certificate Authority
+  hosts: windows_ca
+  vars:
+    ansible_become: true
+    ansible_become_method: runas
+    ansible_become_user: PROMETHEUS\Administrator
+    ansible_become_password: Y$-;FUrEYxtw%ZlhJD8mXS3vYq$yJh4K
+
+  tasks:
+    - name: Copy Root Certificate to ProgramData Folder
+      ansible.windows.win_copy:
+        src: ../files/Prometheus-RootCA-Cert.pfx
+        dest: C:\ProgramData
+
+    - name: win_domain reboot
+      ansible.windows.win_reboot:
+
+    - name: Add Feature Adcs-Cert-Authority
+      ansible.windows.win_feature:
+        name: Adcs-Cert-Authority
+        state: present
+        include_management_tools: yes
+      register: adcs
+    - debug: var=adcs.exitcode
+
+    - name: win_domain reboot
+      ansible.windows.win_reboot:
+
+    - name: Install CA
+      ansible.windows.win_shell: |
+        $password = "QBy2Y6dYlZ0W"
+        Install-ADcsCertificationAuthority -CAType EnterpriseRootCa -CertFile C:\ProgramData\Prometheus-RootCA-Cert.pfx -CertFilePassword ($Password|ConvertTo-SecureString -AsPlainText -Force) –DatabaseDirectory C:\windows\system32\certLog -LogDirectory C:\windows\system32\certLog –Force
+      register: ca
+    - debug: var=ca.stdout
+
+    - name: win_domain reboot
+      ansible.windows.win_reboot:
+
+    - name: Add Feature AdcsWebEnrollment
+      ansible.windows.win_feature:
+        name: Adcs-Web-Enrollment
+        state: present
+        include_management_tools: yes
+      register: web
+    - debug: var=web.exitcode
+
+    - name: Install AdcsWebEnrollment
+      ansible.windows.win_shell: 'Install-AdcsWebEnrollment -Force'
+      register: adcs_web
+    - debug: var=adcs_web.stdout
+
+    - name: Remove Root Cert File
+      ansible.windows.win_file:
+        path: C:\ProgramData\Prometheus-RootCA-Cert.pfx
+        state: absent

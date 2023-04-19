@@ -1,0 +1,24 @@
+{
+  "name": "jenkins",
+  "type": "http",
+  "score_weight": 1,
+  "definition": {
+    "requests": [
+      {
+        "host": "{{.Host}}",
+        "path": "/",
+        "port": 80,
+        "method": "GET",
+        "matchcode": true,
+	"code" : 403,
+	"matchcontent" : true,
+	"contentregex" : ".*Authentication required.*"
+      }
+    ]
+  },
+  "attributes": {
+    "admin": {
+      "Host": "10.{{.TeamNumber}}.2.6"
+    }
+  }
+}

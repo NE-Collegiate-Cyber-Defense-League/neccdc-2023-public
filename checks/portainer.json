@@ -1,0 +1,23 @@
+{
+  "name": "portainer",
+  "type": "http",
+  "score_weight": 1,
+  "definition": {
+    "requests": [
+      {
+        "host": "{{.Host}}",
+        "path": "/",
+        "port": 9443,
+        "method": "GET",
+        "matchcode": true,
+	"code" : 200,
+	"https": true
+      }
+    ]
+  },
+  "attributes": {
+    "admin": {
+      "Host": "10.{{.TeamNumber}}.0.4"
+    }
+  }
+}
